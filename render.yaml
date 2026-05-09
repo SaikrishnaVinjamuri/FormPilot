@@ -1,0 +1,20 @@
+services:
+  - type: worker
+    name: formpilot-worker
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npx prisma generate
+    startCommand: npm run worker:start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM_EMAIL
+        sync: false
+      - key: BREVO_FROM_NAME
+        sync: false
+      - key: NODE_ENV
+        value: production
