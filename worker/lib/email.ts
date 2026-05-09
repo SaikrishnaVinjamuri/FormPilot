@@ -1,1 +1,1 @@
-export { getResend, FROM_EMAIL } from "../../src/lib/email";
+export { sendEmail, FROM_EMAIL, FROM_NAME } from "../../src/lib/email";

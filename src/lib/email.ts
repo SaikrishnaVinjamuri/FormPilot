@@ -1,16 +1,34 @@
-import { Resend } from "resend";
+export const FROM_EMAIL =
+  process.env.BREVO_FROM_EMAIL || "noreply@formpilot.dev";
 
-let _resend: Resend | null = null;
+export const FROM_NAME = process.env.BREVO_FROM_NAME || "FormPilot";
 
-export function getResend(): Resend {
-  if (!_resend) {
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not set");
-    }
-    _resend = new Resend(process.env.RESEND_API_KEY);
-  }
-  return _resend;
+interface SendEmailOptions {
+  to: string;
+  subject: string;
+  html: string;
 }
 
-export const FROM_EMAIL =
-  process.env.RESEND_FROM_EMAIL || "noreply@formpilot.dev";
+export async function sendEmail({ to, subject, html }: SendEmailOptions) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error("BREVO_API_KEY is not set");
+
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: { name: FROM_NAME, email: FROM_EMAIL },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Brevo error ${res.status}: ${body}`);
+  }
+}

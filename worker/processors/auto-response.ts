@@ -1,5 +1,5 @@
 import { Job } from "bullmq";
-import { getResend, FROM_EMAIL } from "../lib/email";
+import { sendEmail } from "../lib/email";
 import { db } from "../lib/db";
 import { logger } from "../lib/logger";
 import { DeliveryStatus, DeliveryType } from "@prisma/client";
@@ -32,20 +32,15 @@ export async function processAutoResponse(job: Job<AutoResponsePayload>) {
     },
   });
 
-  const emailSubject = subject ? interpolate(subject, fields) : "Thank you for your message";
+  const emailSubject = subject
+    ? interpolate(subject, fields)
+    : "Thank you for your message";
   const emailHtml = template
     ? interpolate(template, fields)
     : "<p>Thank you for reaching out. We'll be in touch soon.</p>";
 
   try {
-    const { error } = await getResend().emails.send({
-      from: FROM_EMAIL,
-      to,
-      subject: emailSubject,
-      html: emailHtml,
-    });
-
-    if (error) throw new Error(error.message);
+    await sendEmail({ to, subject: emailSubject, html: emailHtml });
 
     await db.deliveryLog.update({
       where: { id: log.id },
@@ -55,11 +50,31 @@ export async function processAutoResponse(job: Job<AutoResponsePayload>) {
     logger.info({ submissionId, to }, "auto-response: delivered");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const isFinalAttempt = job.attemptsMade >= (job.opts.attempts ?? 1) - 1;
+
     await db.deliveryLog.update({
       where: { id: log.id },
-      data: { status: DeliveryStatus.FAILED, errorMessage: message },
+      data: {
+        status: isFinalAttempt ? DeliveryStatus.DEAD_LETTERED : DeliveryStatus.FAILED,
+        errorMessage: message,
+      },
     });
-    logger.error({ submissionId, to, err: message }, "auto-response: failed");
+
+    if (isFinalAttempt) {
+      await db.deadLetterJob.create({
+        data: {
+          endpointId,
+          submissionId,
+          jobType: "auto-response",
+          payload: JSON.parse(JSON.stringify({ to, subject, template, fields })),
+          errorMessage: message,
+        },
+      });
+      logger.error({ submissionId, to }, "auto-response: dead-lettered");
+    } else {
+      logger.warn({ submissionId, to, attempt: job.attemptsMade }, "auto-response: retrying");
+    }
+
     throw err;
   }
 }

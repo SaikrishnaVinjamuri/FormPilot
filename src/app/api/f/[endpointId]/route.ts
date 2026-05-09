@@ -130,7 +130,6 @@ export async function POST(req: NextRequest, { params }: Context) {
   const rawFields = { ...fields };
   delete rawFields[endpoint.honeypotFieldName];
   // JSON roundtrip: strips `unknown`, satisfies Prisma's InputJsonValue
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const cleanFields = JSON.parse(JSON.stringify(rawFields));
 
   // Persist
