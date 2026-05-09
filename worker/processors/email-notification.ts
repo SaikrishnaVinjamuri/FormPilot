@@ -51,11 +51,31 @@ export async function processEmailNotification(
     logger.info({ submissionId, to }, "email-notification: delivered");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const isFinalAttempt = job.attemptsMade >= (job.opts.attempts ?? 1) - 1;
+
     await db.deliveryLog.update({
       where: { id: log.id },
-      data: { status: DeliveryStatus.FAILED, errorMessage: message },
+      data: {
+        status: isFinalAttempt ? DeliveryStatus.DEAD_LETTERED : DeliveryStatus.FAILED,
+        errorMessage: message,
+      },
     });
-    logger.error({ submissionId, to, err: message }, "email-notification: failed");
+
+    if (isFinalAttempt) {
+      await db.deadLetterJob.create({
+        data: {
+          endpointId,
+          submissionId,
+          jobType: "email-notification",
+          payload: JSON.parse(JSON.stringify({ to, fields })),
+          errorMessage: message,
+        },
+      });
+      logger.error({ submissionId, to }, "email-notification: dead-lettered");
+    } else {
+      logger.warn({ submissionId, to, attempt: job.attemptsMade }, "email-notification: retrying");
+    }
+
     throw err;
   }
 }

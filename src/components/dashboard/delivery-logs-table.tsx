@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { RetryDeliveryButton } from "@/components/dashboard/retry-delivery-button";
 import type { DeliveryLog } from "@prisma/client";
 
 interface Props {
@@ -25,6 +26,8 @@ const statusVariant: Record<
   RETRYING: "outline",
   DEAD_LETTERED: "destructive",
 };
+
+const retryable = new Set(["FAILED", "DEAD_LETTERED"]);
 
 function formatDate(d: Date) {
   return new Date(d).toLocaleString(undefined, {
@@ -51,9 +54,9 @@ export function DeliveryLogsTable({ logs }: Props) {
             <TableHead>Type</TableHead>
             <TableHead>Destination</TableHead>
             <TableHead className="w-28">Status</TableHead>
-            <TableHead className="w-16">Code</TableHead>
             <TableHead>Error</TableHead>
             <TableHead className="w-16">Attempts</TableHead>
+            <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -76,12 +79,16 @@ export function DeliveryLogsTable({ logs }: Props) {
                   {log.status}
                 </Badge>
               </TableCell>
-              <TableCell className="text-xs">{log.statusCode ?? "—"}</TableCell>
               <TableCell className="text-xs text-muted-foreground truncate max-w-xs">
                 {log.errorMessage ?? "—"}
               </TableCell>
               <TableCell className="text-xs text-center">
                 {log.attemptCount}
+              </TableCell>
+              <TableCell>
+                {retryable.has(log.status) && (
+                  <RetryDeliveryButton logId={log.id} />
+                )}
               </TableCell>
             </TableRow>
           ))}

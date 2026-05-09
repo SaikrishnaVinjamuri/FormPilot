@@ -50,11 +50,31 @@ export async function processAutoResponse(job: Job<AutoResponsePayload>) {
     logger.info({ submissionId, to }, "auto-response: delivered");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const isFinalAttempt = job.attemptsMade >= (job.opts.attempts ?? 1) - 1;
+
     await db.deliveryLog.update({
       where: { id: log.id },
-      data: { status: DeliveryStatus.FAILED, errorMessage: message },
+      data: {
+        status: isFinalAttempt ? DeliveryStatus.DEAD_LETTERED : DeliveryStatus.FAILED,
+        errorMessage: message,
+      },
     });
-    logger.error({ submissionId, to, err: message }, "auto-response: failed");
+
+    if (isFinalAttempt) {
+      await db.deadLetterJob.create({
+        data: {
+          endpointId,
+          submissionId,
+          jobType: "auto-response",
+          payload: JSON.parse(JSON.stringify({ to, subject, template, fields })),
+          errorMessage: message,
+        },
+      });
+      logger.error({ submissionId, to }, "auto-response: dead-lettered");
+    } else {
+      logger.warn({ submissionId, to, attempt: job.attemptsMade }, "auto-response: retrying");
+    }
+
     throw err;
   }
 }

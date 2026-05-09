@@ -14,6 +14,10 @@ export const spamCheckQueue = new Queue(QUEUE_NAMES.SPAM_CHECK, {
 
 export const emailNotificationQueue = new Queue(QUEUE_NAMES.EMAIL_NOTIFICATION, {
   connection: redis,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+  },
 });
 
 export const webhookDeliveryQueue = new Queue(QUEUE_NAMES.WEBHOOK_DELIVERY, {
@@ -26,4 +30,8 @@ export const webhookDeliveryQueue = new Queue(QUEUE_NAMES.WEBHOOK_DELIVERY, {
 
 export const autoResponseQueue = new Queue(QUEUE_NAMES.AUTO_RESPONSE, {
   connection: redis,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+  },
 });
