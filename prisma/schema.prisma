@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  password  String?
+  role      Role     @default(DEVELOPER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  endpoints FormEndpoint[]
+  apiKeys   ApiKey[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FormEndpoint {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notificationEmail      String?
+  redirectUrl            String?
+  allowedOrigins         String[] @default([])
+  webhookUrls            String[] @default([])
+
+  autoResponseEnabled    Boolean  @default(false)
+  autoResponseSubject    String?
+  autoResponseTemplate   String?
+  autoResponseEmailField String?
+
+  spamProtectionEnabled  Boolean  @default(true)
+  honeypotFieldName      String   @default("_hp")
+
+  fileUploadsEnabled     Boolean  @default(false)
+  maxFileSizeBytes       Int      @default(1048576)
+  allowedFileTypes       String[] @default([])
+
+  rateLimitPerMinute     Int      @default(30)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submissions  Submission[]
+  deliveryLogs DeliveryLog[]
+}
+
+model Submission {
+  id         String   @id @default(cuid())
+  endpointId String
+  fields     Json
+  ipAddress  String?
+  userAgent  String?
+  referer    String?
+  isSpam     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  endpoint     FormEndpoint  @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  deliveryLogs DeliveryLog[]
+}
+
+model DeliveryLog {
+  id           String         @id @default(cuid())
+  endpointId   String
+  submissionId String
+  type         DeliveryType
+  destination  String
+  status       DeliveryStatus @default(PENDING)
+  statusCode   Int?
+  errorMessage String?
+  attemptCount Int            @default(0)
+  nextRetryAt  DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  endpoint   FormEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  submission Submission   @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model DeadLetterJob {
+  id           String    @id @default(cuid())
+  endpointId   String
+  submissionId String
+  jobType      String
+  payload      Json
+  errorMessage String?
+  failedAt     DateTime  @default(now())
+  retriedAt    DateTime?
+  resolvedAt   DateTime?
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  keyHash   String    @unique
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  ADMIN
+  DEVELOPER
+}
+
+enum DeliveryType {
+  EMAIL_NOTIFICATION
+  WEBHOOK
+  AUTO_RESPONSE
+}
+
+enum DeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  RETRYING
+  DEAD_LETTERED
+}
