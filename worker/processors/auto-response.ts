@@ -1,5 +1,5 @@
 import { Job } from "bullmq";
-import { getResend, FROM_EMAIL } from "../lib/email";
+import { sendEmail } from "../lib/email";
 import { db } from "../lib/db";
 import { logger } from "../lib/logger";
 import { DeliveryStatus, DeliveryType } from "@prisma/client";
@@ -32,20 +32,15 @@ export async function processAutoResponse(job: Job<AutoResponsePayload>) {
     },
   });
 
-  const emailSubject = subject ? interpolate(subject, fields) : "Thank you for your message";
+  const emailSubject = subject
+    ? interpolate(subject, fields)
+    : "Thank you for your message";
   const emailHtml = template
     ? interpolate(template, fields)
     : "<p>Thank you for reaching out. We'll be in touch soon.</p>";
 
   try {
-    const { error } = await getResend().emails.send({
-      from: FROM_EMAIL,
-      to,
-      subject: emailSubject,
-      html: emailHtml,
-    });
-
-    if (error) throw new Error(error.message);
+    await sendEmail({ to, subject: emailSubject, html: emailHtml });
 
     await db.deliveryLog.update({
       where: { id: log.id },
