@@ -1,5 +1,5 @@
 import { Job } from "bullmq";
-import { resend, FROM_EMAIL } from "../lib/email";
+import { getResend, FROM_EMAIL } from "../lib/email";
 import { db } from "../lib/db";
 import { logger } from "../lib/logger";
 import { DeliveryStatus, DeliveryType } from "@prisma/client";
@@ -37,7 +37,7 @@ export async function processEmailNotification(
   });
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: FROM_EMAIL,
       to,
       subject: "New form submission",
