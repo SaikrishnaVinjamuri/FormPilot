@@ -64,14 +64,22 @@ export default async function EndpointDetailPage({ params }: Props) {
 
       {/* Tabs */}
       <Tabs defaultValue="submissions">
-        <TabsList>
-          <TabsTrigger value="submissions">
-            Submissions ({endpoint.submissions.length})
+        <TabsList variant="line" className="w-full justify-start border-b rounded-none h-auto pb-0 gap-0">
+          <TabsTrigger value="submissions" className="rounded-none px-4 py-2.5 text-sm font-medium">
+            Submissions
+            <span className="ml-2 text-xs tabular-nums text-muted-foreground">
+              {endpoint.submissions.length}
+            </span>
           </TabsTrigger>
-          <TabsTrigger value="delivery">
-            Delivery logs ({endpoint.deliveryLogs.length})
+          <TabsTrigger value="delivery" className="rounded-none px-4 py-2.5 text-sm font-medium">
+            Delivery logs
+            <span className="ml-2 text-xs tabular-nums text-muted-foreground">
+              {endpoint.deliveryLogs.length}
+            </span>
           </TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="settings" className="rounded-none px-4 py-2.5 text-sm font-medium">
+            Settings
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="submissions" className="mt-4">
