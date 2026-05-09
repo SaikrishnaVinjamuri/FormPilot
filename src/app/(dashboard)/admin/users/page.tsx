@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
