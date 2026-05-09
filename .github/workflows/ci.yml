@@ -24,6 +24,8 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/formpilot"
 
       - name: Type check
         run: npx tsc --noEmit
@@ -33,3 +35,5 @@ jobs:
 
       - name: Validate Prisma schema
         run: npx prisma validate
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/formpilot"
