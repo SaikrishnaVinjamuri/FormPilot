@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { DeliveryType } from "@prisma/client";
-import {
-  emailNotificationQueue,
-  webhookDeliveryQueue,
-  autoResponseQueue,
-} from "@/lib/queues";
+import { emailNotificationTask } from "@/trigger/email-notification";
+import { webhookDeliveryTask } from "@/trigger/webhook-delivery";
+import { autoResponseTask } from "@/trigger/auto-response";
 
 type Context = { params: Promise<{ logId: string }> };
 
@@ -37,21 +35,21 @@ export async function POST(_req: NextRequest, { params }: Context) {
   const fields = (log.submission.fields ?? {}) as Record<string, unknown>;
 
   if (log.type === DeliveryType.EMAIL_NOTIFICATION) {
-    await emailNotificationQueue.add("retry", {
+    await emailNotificationTask.trigger({
       submissionId: log.submissionId,
       endpointId: log.endpointId,
       to: log.destination,
       fields,
     });
   } else if (log.type === DeliveryType.WEBHOOK) {
-    await webhookDeliveryQueue.add("retry", {
+    await webhookDeliveryTask.trigger({
       submissionId: log.submissionId,
       endpointId: log.endpointId,
       url: log.destination,
       fields,
     });
   } else if (log.type === DeliveryType.AUTO_RESPONSE) {
-    await autoResponseQueue.add("retry", {
+    await autoResponseTask.trigger({
       submissionId: log.submissionId,
       endpointId: log.endpointId,
       to: log.destination,

@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { checkRateLimit } from "@/lib/rate-limit";
-import {
-  spamCheckQueue,
-  emailNotificationQueue,
-  webhookDeliveryQueue,
-  autoResponseQueue,
-} from "@/lib/queues";
+import { spamCheckTask } from "@/trigger/spam-check";
+import { emailNotificationTask } from "@/trigger/email-notification";
+import { webhookDeliveryTask } from "@/trigger/webhook-delivery";
+import { autoResponseTask } from "@/trigger/auto-response";
 
 type Context = { params: Promise<{ endpointId: string }> };
 
@@ -144,10 +142,10 @@ export async function POST(req: NextRequest, { params }: Context) {
     },
   });
 
-  // Enqueue jobs
+  // Trigger jobs
   if (!isSpam) {
     if (endpoint.notificationEmail) {
-      await emailNotificationQueue.add("send", {
+      await emailNotificationTask.trigger({
         submissionId: submission.id,
         endpointId,
         to: endpoint.notificationEmail,
@@ -156,7 +154,7 @@ export async function POST(req: NextRequest, { params }: Context) {
     }
 
     for (const url of endpoint.webhookUrls) {
-      await webhookDeliveryQueue.add("deliver", {
+      await webhookDeliveryTask.trigger({
         submissionId: submission.id,
         endpointId,
         url,
@@ -167,7 +165,7 @@ export async function POST(req: NextRequest, { params }: Context) {
     if (endpoint.autoResponseEnabled && endpoint.autoResponseEmailField) {
       const recipientEmail = cleanFields[endpoint.autoResponseEmailField];
       if (typeof recipientEmail === "string" && recipientEmail.includes("@")) {
-        await autoResponseQueue.add("send", {
+        await autoResponseTask.trigger({
           submissionId: submission.id,
           endpointId,
           to: recipientEmail,
@@ -179,8 +177,8 @@ export async function POST(req: NextRequest, { params }: Context) {
     }
   }
 
-  // Always enqueue async spam analysis (may update isSpam after honeypot check)
-  await spamCheckQueue.add("check", {
+  // Always run async spam analysis
+  await spamCheckTask.trigger({
     submissionId: submission.id,
     endpointId,
     fields: cleanFields,
