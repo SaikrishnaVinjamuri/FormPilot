@@ -79,7 +79,6 @@ export function SubmissionsTable({ submissions }: Props) {
               <Fragment key={sub.id}>
                 <TableRow
                   className="cursor-pointer hover:bg-muted/50"
-                  className="cursor-pointer hover:bg-muted/50"
                   onClick={() => toggle(sub.id)}
                 >
                   <TableCell className="text-muted-foreground">
