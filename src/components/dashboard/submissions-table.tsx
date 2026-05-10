@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, Fragment } from "react";
 import {
   Table,
   TableBody,
@@ -9,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Submission } from "@prisma/client";
 
 interface Props {
@@ -35,6 +37,8 @@ function formatDate(d: Date) {
 }
 
 export function SubmissionsTable({ submissions }: Props) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
   if (submissions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
@@ -45,11 +49,20 @@ export function SubmissionsTable({ submissions }: Props) {
 
   const columns = getColumns(submissions);
 
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
   return (
     <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-8" />
             <TableHead className="w-36">Date</TableHead>
             {columns.map((col) => (
               <TableHead key={col}>{col}</TableHead>
@@ -60,24 +73,57 @@ export function SubmissionsTable({ submissions }: Props) {
         <TableBody>
           {submissions.map((sub) => {
             const fields = (sub.fields ?? {}) as Record<string, unknown>;
+            const isOpen = expanded.has(sub.id);
+
             return (
-              <TableRow key={sub.id}>
-                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                  {formatDate(sub.createdAt)}
-                </TableCell>
-                {columns.map((col) => (
-                  <TableCell key={col} className="text-sm max-w-xs truncate">
-                    {fields[col] != null ? String(fields[col]) : "—"}
+              <Fragment key={sub.id}>
+                <TableRow
+                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggle(sub.id)}
+                >
+                  <TableCell className="text-muted-foreground">
+                    {isOpen ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
                   </TableCell>
-                ))}
-                <TableCell>
-                  {sub.isSpam && (
-                    <Badge variant="destructive" className="text-xs">
-                      Spam
-                    </Badge>
-                  )}
-                </TableCell>
-              </TableRow>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatDate(sub.createdAt)}
+                  </TableCell>
+                  {columns.map((col) => (
+                    <TableCell key={col} className="text-sm max-w-xs truncate">
+                      {fields[col] != null ? String(fields[col]) : "—"}
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    {sub.isSpam && (
+                      <Badge variant="destructive" className="text-xs">
+                        Spam
+                      </Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+
+                {isOpen && (
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableCell colSpan={columns.length + 3} className="py-4 px-6">
+                      <div className="space-y-2">
+                        {Object.entries(fields).map(([k, v]) => (
+                          <div key={k} className="grid grid-cols-[160px_1fr] gap-2 text-sm">
+                            <span className="font-medium text-muted-foreground shrink-0">{k}</span>
+                            <span className="break-words whitespace-pre-wrap">{String(v)}</span>
+                          </div>
+                        ))}
+                        <p className="text-xs text-muted-foreground pt-1 border-t mt-2">
+                          IP: {sub.ipAddress ?? "—"} · UA: {sub.userAgent ?? "—"}
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
             );
           })}
         </TableBody>
